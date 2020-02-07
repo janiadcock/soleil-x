@@ -67,7 +67,7 @@
     "Integrator" : {
         "startIter" : 0,
         "startTime" : 0.0,
-        "maxIter" : 1000000,
+        "maxIter" : 1000,
         "cfl" : 1.0,
         "fixedDeltaTime" : -1.0,
          "rkOrder" : 4
@@ -118,7 +118,7 @@
 
     "IO" : {
         "wrtRestart" : true,
-        "restartEveryTimeSteps" : 20000,
+        "restartEveryTimeSteps" : 100,
         "probes" : []
     }
 }
