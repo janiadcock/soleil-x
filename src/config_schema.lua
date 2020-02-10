@@ -11,22 +11,25 @@ Exports.Window = {
 }
 
 -- Unions & enumeration constants
-Exports.FlowBC = Enum('Periodic','Symmetry','AdiabaticWall','IsothermalWall','NSCBC_SubsonicInflow','NSCBC_SubsonicOutflow','NonUniformTemperatureWall')
+Exports.FlowBC = Enum('Periodic','Symmetry','AdiabaticWall','IsothermalWall','NSCBC_SubsonicInflow','NSCBC_SubsonicOutflow','NonUniformTemperatureWall','UniformHeatFlux')
 Exports.ParticlesBC = Enum('Periodic','Bounce','Disappear')
 Exports.ViscosityModel = Enum('Constant','PowerLaw','Sutherland')
 Exports.FlowInitCase = Enum('Uniform','Random','Restart','Perturbed','TaylorGreen2DVortex','TaylorGreen3DVortex')
 Exports.ParticlesInitCase = Enum('Random','Restart','Uniform')
 Exports.GridType = Enum('Uniform','Stretched')
-Exports.TempProfile = Union{
-  Constant = {
+Exports.HeatTransferProfile = Union{
+  TempConstant = {
     temperature = double,
   },
-  Parabola = {
+  TempParabola = {
     T_left = double,
     T_right = double,
     T_mid = double,
   },
-  Incoming = {},
+  TempIncoming = {},
+  HeatFluxConstant = {
+    flux = double,
+  },
 }
 Exports.InflowProfile = Union{
   Constant = {
@@ -139,25 +142,25 @@ Exports.Config = {
   BC = {
     xBCLeft = Exports.FlowBC,
     xBCLeftVel = Array(3,double),
-    xBCLeftHeat = Exports.TempProfile,
+    xBCLeftHeat = Exports.HeatTransferProfile,
     xBCLeftInflowProfile = Exports.InflowProfile,
     xBCRight = Exports.FlowBC,
     xBCRightVel = Array(3,double),
-    xBCRightHeat = Exports.TempProfile,
+    xBCRightHeat = Exports.HeatTransferProfile,
     -- Pressure that the sub-sonic outlet relaxes
     xBCRightP_inf = double,
     yBCLeft = Exports.FlowBC,
     yBCLeftVel = Array(3,double),
-    yBCLeftHeat = Exports.TempProfile,
+    yBCLeftHeat = Exports.HeatTransferProfile,
     yBCRight = Exports.FlowBC,
     yBCRightVel = Array(3,double),
-    yBCRightHeat = Exports.TempProfile,
+    yBCRightHeat = Exports.HeatTransferProfile,
     zBCLeft = Exports.FlowBC,
     zBCLeftVel = Array(3,double),
-    zBCLeftHeat = Exports.TempProfile,
+    zBCLeftHeat = Exports.HeatTransferProfile,
     zBCRight = Exports.FlowBC,
     zBCRightVel = Array(3,double),
-    zBCRightHeat = Exports.TempProfile,
+    zBCRightHeat = Exports.HeatTransferProfile,
   },
   Integrator = {
     startIter = int,
