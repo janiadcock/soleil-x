@@ -2133,7 +2133,7 @@ do
   var Grid_zWidth = config.Grid.zWidth
   -- Inflow values
   var BC_xBCLeftHeat_type = config.BC.xBCLeftHeat.type
-  var BC_xBCLeftHeat_Constant_temperature = config.BC.xBCLeftHeat.u.Constant.temperature
+  var BC_xBCLeftHeat_Constant_temperature = config.BC.xBCLeftHeat.u.TempConstant.temperature
   var BC_xBCLeftInflowProfile_type = config.BC.xBCLeftInflowProfile.type
   var BC_xBCLeftInflowProfile_Constant_velocity = config.BC.xBCLeftInflowProfile.u.Constant.velocity
   var BC_xBCLeftInflowProfile_Duct_meanVelocity = config.BC.xBCLeftInflowProfile.u.Duct.meanVelocity
@@ -2210,13 +2210,13 @@ do
       Fluid[c_bnd].rho = Fluid[c_int].rho
 
       var temperature : double
-      if BC_xBCLeftHeat_type == SCHEMA.TempProfile_Constant then
+      if BC_xBCLeftHeat_type == SCHEMA.HeatTransferProfile_TempConstant then
         temperature = BC_xBCLeftHeat_Constant_temperature
         -- Use the specified temperature to find the correct pressure for current density from EOS
         Fluid[c_bnd].pressure = temperature*Flow_gasConstant*Fluid[c_bnd].rho
-      -- elseif BC_xBCLeftHeat_type == SCHEMA.TempProfile_Parabola then
+      -- elseif BC_xBCLeftHeat_type == SCHEMA.HeatTransferProfile_TempParabola then
       --   regentlib.assert(false, 'Parabola heat model not supported')
-      else -- BC_xBCLeftHeat_type == SCHEMA.TempProfile_Incoming
+      else -- BC_xBCLeftHeat_type == SCHEMA.HeatTransferProfile_TempIncoming
         -- This value will be overwritten by the incoming fluid, so just set
         -- it to something reasonable.
         Fluid[c_bnd].pressure = Fluid[c_int].pressure
@@ -2657,7 +2657,7 @@ where
 do
   var BC_xBCLeft = config.BC.xBCLeft
   var BC_xBCLeftHeat_type = config.BC.xBCLeftHeat.type
-  var BC_xBCLeftHeat_Constant_temperature = config.BC.xBCLeftHeat.u.Constant.temperature
+  var BC_xBCLeftHeat_Constant_temperature = config.BC.xBCLeftHeat.u.TempConstant.temperature
   var BC_xBCRight = config.BC.xBCRight
   __demand(__openmp)
   for c in Fluid do
@@ -2675,11 +2675,11 @@ do
       var kineticEnergy = (0.5*Fluid[c].rho) * dot(Fluid[c].velocity,Fluid[c].velocity)
       Fluid[c].pressure = (Flow_gamma-1.0) * (Fluid[c].rhoEnergy-kineticEnergy)
       var temperature : double
-      if BC_xBCLeftHeat_type == SCHEMA.TempProfile_Constant then
+      if BC_xBCLeftHeat_type == SCHEMA.HeatTransferProfile_TempConstant then
         temperature = BC_xBCLeftHeat_Constant_temperature
-        -- elseif BC_xBCLeftHeat_type == SCHEMA.TempProfile_Parabola then
+        -- elseif BC_xBCLeftHeat_type == SCHEMA.HeatTransferProfile_TempParabola then
         --   regentlib.assert(false, 'Parabola heat model not supported')
-      else -- BC_xBCLeftHeat_type == SCHEMA.TempProfile_Incoming
+      else -- BC_xBCLeftHeat_type == SCHEMA.HeatTransferProfile_TempIncoming
         temperature = Fluid[c].temperature_inc
       end
       Fluid[c].temperature = temperature
@@ -2700,6 +2700,7 @@ task Flow_UpdateGhostThermodynamics(Fluid : region(ispace(int3d), Fluid_columns)
                                     config : Config,
                                     Flow_gamma : double,
                                     Flow_gasConstant : double,
+                                    Flow_Pr : double,
                                     BC_xNegTemperature : double, BC_xPosTemperature : double,
                                     BC_yNegTemperature : double, BC_yPosTemperature : double,
                                     BC_zNegTemperature : double, BC_zPosTemperature : double,
@@ -2717,18 +2718,18 @@ do
   var BC_zBCLeft  = config.BC.zBCLeft
   var BC_zBCRight = config.BC.zBCRight
   var Grid_xWidth = config.Grid.xWidth
-  var BC_yBCLeftHeat_T_left  = config.BC.yBCLeftHeat.u.Parabola.T_left
-  var BC_yBCLeftHeat_T_mid   = config.BC.yBCLeftHeat.u.Parabola.T_mid
-  var BC_yBCLeftHeat_T_right = config.BC.yBCLeftHeat.u.Parabola.T_right
-  var BC_yBCRightHeat_T_left  = config.BC.yBCRightHeat.u.Parabola.T_left
-  var BC_yBCRightHeat_T_mid   = config.BC.yBCRightHeat.u.Parabola.T_mid
-  var BC_yBCRightHeat_T_right = config.BC.yBCRightHeat.u.Parabola.T_right
-  var BC_zBCLeftHeat_T_left  = config.BC.zBCLeftHeat.u.Parabola.T_left
-  var BC_zBCLeftHeat_T_mid   = config.BC.zBCLeftHeat.u.Parabola.T_mid
-  var BC_zBCLeftHeat_T_right = config.BC.zBCLeftHeat.u.Parabola.T_right
-  var BC_zBCRightHeat_T_left  = config.BC.zBCRightHeat.u.Parabola.T_left
-  var BC_zBCRightHeat_T_mid   = config.BC.zBCRightHeat.u.Parabola.T_mid
-  var BC_zBCRightHeat_T_right = config.BC.zBCRightHeat.u.Parabola.T_right
+  var BC_yBCLeftHeat_T_left  = config.BC.yBCLeftHeat.u.TempParabola.T_left
+  var BC_yBCLeftHeat_T_mid   = config.BC.yBCLeftHeat.u.TempParabola.T_mid
+  var BC_yBCLeftHeat_T_right = config.BC.yBCLeftHeat.u.TempParabola.T_right
+  var BC_yBCRightHeat_T_left  = config.BC.yBCRightHeat.u.TempParabola.T_left
+  var BC_yBCRightHeat_T_mid   = config.BC.yBCRightHeat.u.TempParabola.T_mid
+  var BC_yBCRightHeat_T_right = config.BC.yBCRightHeat.u.TempParabola.T_right
+  var BC_zBCLeftHeat_T_left  = config.BC.zBCLeftHeat.u.TempParabola.T_left
+  var BC_zBCLeftHeat_T_mid   = config.BC.zBCLeftHeat.u.TempParabola.T_mid
+  var BC_zBCLeftHeat_T_right = config.BC.zBCLeftHeat.u.TempParabola.T_right
+  var BC_zBCRightHeat_T_left  = config.BC.zBCRightHeat.u.TempParabola.T_left
+  var BC_zBCRightHeat_T_mid   = config.BC.zBCRightHeat.u.TempParabola.T_mid
+  var BC_zBCRightHeat_T_right = config.BC.zBCRightHeat.u.TempParabola.T_right
 
   __demand(__openmp)
   for c in Fluid do
@@ -2784,6 +2785,14 @@ do
         var temperature = ((2.0*wall_temperature)-Fluid[c_int].temperature)
         Fluid[c_bnd].pressure = Fluid[c_int].pressure
         Fluid[c_bnd].temperature = temperature
+      elseif (BC_yBCLeft == SCHEMA.FlowBC_UniformHeatFlux) then
+        var mu = 1.9e-5 -- TO DO: should be set from inputs 
+        var c_p = Flow_gamma*Flow_gasConstant/(Flow_gamma - 1.0)
+        var k = c_p *mu/Flow_Pr
+        var wall_temperature = Fluid[c_int].temperature + config.BC.yBCLeftHeat.u.HeatFluxConstant.flux*Grid_xWidth
+        var temperature = ((2.0*wall_temperature)-Fluid[c_int].temperature)
+        Fluid[c_bnd].pressure = Fluid[c_int].pressure
+        Fluid[c_bnd].temperature = temperature 
       else
         var bnd_temperature = BC_yNegTemperature
         var temp_wall = 0.0
@@ -2809,6 +2818,14 @@ do
         if wall_temperature < 0.0 then --unphysical.... set wall themperature to zero
           wall_temperature = 0.0
         end
+        var temperature = ((2.0*wall_temperature)-Fluid[c_int].temperature)
+        Fluid[c_bnd].pressure = Fluid[c_int].pressure
+        Fluid[c_bnd].temperature = temperature
+      elseif (BC_yBCRight == SCHEMA.FlowBC_UniformHeatFlux) then
+        var mu = 1.9e-5 -- TO DO: should be set from inputs
+        var c_p = Flow_gamma*Flow_gasConstant/(Flow_gamma - 1.0)
+        var k = c_p *mu/Flow_Pr
+        var wall_temperature = Fluid[c_int].temperature + config.BC.yBCLeftHeat.u.HeatFluxConstant.flux*Grid_xWidth
         var temperature = ((2.0*wall_temperature)-Fluid[c_int].temperature)
         Fluid[c_bnd].pressure = Fluid[c_int].pressure
         Fluid[c_bnd].temperature = temperature
@@ -5759,12 +5776,14 @@ local function mkInstance(config) local INSTANCE = {}
     if ((config.BC.xBCLeft == SCHEMA.FlowBC_Periodic) and (config.BC.xBCRight == SCHEMA.FlowBC_Periodic)) then
       BC.xBCParticles = SCHEMA.ParticlesBC_Periodic
     elseif ((config.BC.xBCLeft == SCHEMA.FlowBC_NSCBC_SubsonicInflow) and (config.BC.xBCRight == SCHEMA.FlowBC_NSCBC_SubsonicOutflow)) then
-      if config.BC.xBCLeftHeat.type == SCHEMA.TempProfile_Constant then
+      if config.BC.xBCLeftHeat.type == SCHEMA.HeatTransferProfile_TempConstant then
         -- Do nothing
-      elseif config.BC.xBCLeftHeat.type == SCHEMA.TempProfile_Parabola then
+      elseif config.BC.xBCLeftHeat.type == SCHEMA.HeatTransferProfile_TempParabola then
         regentlib.assert(false, 'Parabola heat model not supported')
-      elseif config.BC.xBCLeftHeat.type == SCHEMA.TempProfile_Incoming then
+      elseif config.BC.xBCLeftHeat.type == SCHEMA.HeatTransferProfile_TempIncoming then
         -- Do nothing
+      elseif config.BC.xBCLeftHeat.type == SCHEMA.HeatTransferProfile_HeatFluxConstant then
+        regentlib.assert(false, 'heat flux not supported')
       else regentlib.assert(false, 'Unhandled case in switch') end
       BC.xBCParticles = SCHEMA.ParticlesBC_Disappear
     else
@@ -5781,8 +5800,8 @@ local function mkInstance(config) local INSTANCE = {}
       elseif (config.BC.xBCLeft == SCHEMA.FlowBC_IsothermalWall) then
         BC.xNegSign = array(-1.0, -1.0, -1.0)
         BC.xNegVelocity = vs_mul(config.BC.xBCLeftVel, 2.0)
-        if config.BC.xBCLeftHeat.type == SCHEMA.TempProfile_Constant then
-          BC.xNegTemperature = config.BC.xBCLeftHeat.u.Constant.temperature
+        if config.BC.xBCLeftHeat.type == SCHEMA.HeatTransferProfile_TempConstant then
+          BC.xNegTemperature = config.BC.xBCLeftHeat.u.TempConstant.temperature
         else
           regentlib.assert(false, 'Only constant heat model supported')
         end
@@ -5804,8 +5823,8 @@ local function mkInstance(config) local INSTANCE = {}
       elseif (config.BC.xBCRight == SCHEMA.FlowBC_IsothermalWall) then
         BC.xPosSign = array(-1.0, -1.0, -1.0)
         BC.xPosVelocity = vs_mul(config.BC.xBCRightVel, 2.0)
-        if config.BC.xBCRightHeat.type == SCHEMA.TempProfile_Constant then
-          BC.xPosTemperature = config.BC.xBCRightHeat.u.Constant.temperature
+        if config.BC.xBCRightHeat.type == SCHEMA.HeatTransferProfile_TempConstant then
+          BC.xPosTemperature = config.BC.xBCRightHeat.u.TempConstant.temperature
         else
           regentlib.assert(false, 'Only constant heat model supported')
         end
@@ -5832,8 +5851,8 @@ local function mkInstance(config) local INSTANCE = {}
       elseif (config.BC.yBCLeft == SCHEMA.FlowBC_IsothermalWall) then
         BC.yNegSign = array(-1.0, -1.0, -1.0)
         BC.yNegVelocity = vs_mul(config.BC.yBCLeftVel, 2.0)
-        if config.BC.yBCLeftHeat.type == SCHEMA.TempProfile_Constant then
-          BC.yNegTemperature = config.BC.yBCLeftHeat.u.Constant.temperature
+        if config.BC.yBCLeftHeat.type == SCHEMA.HeatTransferProfile_TempConstant then
+          BC.yNegTemperature = config.BC.yBCLeftHeat.u.TempConstant.temperature
         else
           regentlib.assert(false, 'Only constant heat model supported')
         end
@@ -5841,8 +5860,15 @@ local function mkInstance(config) local INSTANCE = {}
       elseif (config.BC.yBCLeft == SCHEMA.FlowBC_NonUniformTemperatureWall) then
         BC.yNegSign = array(-1.0, -1.0, -1.0)
         BC.yNegVelocity = vs_mul(config.BC.yBCLeftVel, 2.0)
-        if not (config.BC.yBCLeftHeat.type == SCHEMA.TempProfile_Parabola) then
+        if not (config.BC.yBCLeftHeat.type == SCHEMA.HeatTransferProfile_TempParabola) then
           regentlib.assert(false, 'Only parabola heat model supported')
+        end
+        BC.yBCParticles = SCHEMA.ParticlesBC_Bounce
+      elseif (config.BC.yBCLeft == SCHEMA.FlowBC_UniformHeatFlux) then
+        BC.yNegSign = array(-1.0, -1.0, -1.0)
+        BC.yNegVelocity = vs_mul(config.BC.yBCLeftVel, 2.0)
+        if not (config.BC.yBCLeftHeat.type == SCHEMA.HeatTransferProfile_HeatFluxConstant) then
+          regentlib.assert(false, 'Only constant heat flux supported')
         end
         BC.yBCParticles = SCHEMA.ParticlesBC_Bounce
       else
@@ -5862,8 +5888,8 @@ local function mkInstance(config) local INSTANCE = {}
       elseif (config.BC.yBCRight == SCHEMA.FlowBC_IsothermalWall) then
         BC.yPosSign = array(-1.0, -1.0, -1.0)
         BC.yPosVelocity = vs_mul(config.BC.yBCRightVel, 2.0)
-        if config.BC.yBCRightHeat.type == SCHEMA.TempProfile_Constant then
-          BC.yPosTemperature = config.BC.yBCRightHeat.u.Constant.temperature
+        if config.BC.yBCRightHeat.type == SCHEMA.HeatTransferProfile_TempConstant then
+          BC.yPosTemperature = config.BC.yBCRightHeat.u.TempConstant.temperature
         else
           regentlib.assert(false, 'Only constant heat model supported')
         end
@@ -5871,8 +5897,15 @@ local function mkInstance(config) local INSTANCE = {}
       elseif (config.BC.yBCRight == SCHEMA.FlowBC_NonUniformTemperatureWall) then
         BC.yPosSign = array(-1.0, -1.0, -1.0)
         BC.yPosVelocity = vs_mul(config.BC.yBCRightVel, 2.0)
-        if not (config.BC.yBCRightHeat.type == SCHEMA.TempProfile_Parabola) then
+        if not (config.BC.yBCRightHeat.type == SCHEMA.HeatTransferProfile_TempParabola) then
           regentlib.assert(false, 'Only parabola heat model supported')
+        end
+        BC.yBCParticles = SCHEMA.ParticlesBC_Bounce
+      elseif (config.BC.yBCRight == SCHEMA.FlowBC_UniformHeatFlux) then
+        BC.yPosSign = array(-1.0, -1.0, -1.0)
+        BC.yPosVelocity = vs_mul(config.BC.yBCLeftVel, 2.0)
+        if not (config.BC.yBCRightHeat.type == SCHEMA.HeatTransferProfile_HeatFluxConstant) then
+          regentlib.assert(false, 'Only constant heat flux supported')
         end
         BC.yBCParticles = SCHEMA.ParticlesBC_Bounce
       else
@@ -5897,8 +5930,8 @@ local function mkInstance(config) local INSTANCE = {}
       elseif (config.BC.zBCLeft == SCHEMA.FlowBC_IsothermalWall) then
         BC.zNegSign = array(-1.0, -1.0, -1.0)
         BC.zNegVelocity = vs_mul(config.BC.zBCLeftVel, 2.0)
-        if config.BC.zBCLeftHeat.type == SCHEMA.TempProfile_Constant then
-          BC.zNegTemperature = config.BC.zBCLeftHeat.u.Constant.temperature
+        if config.BC.zBCLeftHeat.type == SCHEMA.HeatTransferProfile_TempConstant then
+          BC.zNegTemperature = config.BC.zBCLeftHeat.u.TempConstant.temperature
         else
           regentlib.assert(false, 'Only constant heat model supported')
         end
@@ -5906,7 +5939,7 @@ local function mkInstance(config) local INSTANCE = {}
       elseif (config.BC.zBCLeft == SCHEMA.FlowBC_NonUniformTemperatureWall) then
         BC.zNegSign = array(-1.0, -1.0, -1.0)
         BC.zNegVelocity = vs_mul(config.BC.zBCLeftVel, 2.0)
-        if not (config.BC.zBCLeftHeat.type == SCHEMA.TempProfile_Parabola) then
+        if not (config.BC.zBCLeftHeat.type == SCHEMA.HeatTransferProfile_TempParabola) then
           regentlib.assert(false, 'Only parabola heat model supported')
         end
         BC.zBCParticles = SCHEMA.ParticlesBC_Bounce
@@ -5927,8 +5960,8 @@ local function mkInstance(config) local INSTANCE = {}
       elseif (config.BC.zBCRight == SCHEMA.FlowBC_IsothermalWall) then
         BC.zPosSign = array(-1.0, -1.0, -1.0)
         BC.zPosVelocity = vs_mul(config.BC.zBCRightVel, 2.0)
-        if config.BC.zBCRightHeat.type == SCHEMA.TempProfile_Constant then
-          BC.zPosTemperature = config.BC.zBCRightHeat.u.Constant.temperature
+        if config.BC.zBCRightHeat.type == SCHEMA.HeatTransferProfile_TempConstant then
+          BC.zPosTemperature = config.BC.zBCRightHeat.u.TempConstant.temperature
         else
           regentlib.assert(false, 'Only constant heat model supported')
         end
@@ -5936,7 +5969,7 @@ local function mkInstance(config) local INSTANCE = {}
       elseif (config.BC.zBCRight == SCHEMA.FlowBC_NonUniformTemperatureWall) then
         BC.zPosSign = array(-1.0, -1.0, -1.0)
         BC.zPosVelocity = vs_mul(config.BC.zBCRightVel, 2.0)
-        if not (config.BC.zBCRightHeat.type == SCHEMA.TempProfile_Parabola) then
+        if not (config.BC.zBCRightHeat.type == SCHEMA.HeatTransferProfile_TempParabola) then
           regentlib.assert(false, 'Only parabola heat model supported')
         end
         BC.zBCParticles = SCHEMA.ParticlesBC_Bounce
@@ -6088,6 +6121,7 @@ local function mkInstance(config) local INSTANCE = {}
                                      config,
                                      config.Flow.gamma,
                                      config.Flow.gasConstant,
+                                     config.Flow.prandtl,
                                      BC.xNegTemperature, BC.xPosTemperature,
                                      BC.yNegTemperature, BC.yPosTemperature,
                                      BC.zNegTemperature, BC.zPosTemperature,
